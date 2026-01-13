@@ -103,6 +103,7 @@ app.get("/api/health", (req, res) => {
 
 /* ------------------ DATABASE + SERVER ------------------ */
 const PORT = process.env.PORT || 5000;
+console.log("MONGODB_URI loaded:", !!process.env.MONGODB_URI);
 
 mongoose
   .connect(process.env.MONGODB_URI)
