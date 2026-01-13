@@ -11,6 +11,8 @@ yarn.lock
 # Build outputs
 
 build/
+dist
+
 
 # Logs
 *.log
