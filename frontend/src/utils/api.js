@@ -1,17 +1,16 @@
 import axios from "axios";
 
-// 1. Debugging: This will print the variable to your browser console
-console.log("DEBUG: VITE_API_URL is:", import.meta.env.VITE_API_URL);
+// TEMPORARY FIX: Hardcode the URL to bypass the environment variable issue
+const baseURL = "https://gigflow-backend-4mnl.onrender.com/api";
 
-// 2. Safety Check: Fallback to localhost if the variable is missing (prevents the 404 on frontend)
-const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+console.log("Using Hardcoded URL:", baseURL);
 
 const api = axios.create({
   baseURL: baseURL,
   withCredentials: true,
   headers: {
-    "Content-Type": "application/json",
-  },
+    "Content-Type": "application/json"
+  }
 });
 
 export default api;
