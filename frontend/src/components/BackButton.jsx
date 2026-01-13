@@ -4,7 +4,13 @@ const BackButton = () => {
   const navigate = useNavigate();
 
   const handleBack = () => {
-    navigate(-1);
+    try {
+      navigate(-1);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      // Fallback to home if navigation fails
+      navigate('/');
+    }
   };
 
   return (

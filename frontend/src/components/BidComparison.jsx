@@ -87,7 +87,13 @@ const BidComparison = ({ bids, onHire, isOpen }) => {
               <p className="text-gray-700 mb-4 font-medium">{bid.message}</p>
               {isOpen && (
                 <button
-                  onClick={() => onHire(bid._id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onHire && typeof onHire === 'function') {
+                      onHire(bid._id);
+                    }
+                  }}
                   className="px-5 py-2.5 bg-[#FFD700] text-gray-900 rounded-2xl hover:bg-[#FFC700] transition-all font-black shadow-md hover:shadow-lg"
                 >
                   Hire This Freelancer
@@ -176,7 +182,13 @@ const BidComparison = ({ bids, onHire, isOpen }) => {
                       </div>
                       {isOpen && (
                         <button
-                          onClick={() => onHire(bid._id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (onHire && typeof onHire === 'function') {
+                              onHire(bid._id);
+                            }
+                          }}
                           className="w-full px-4 py-2.5 bg-[#FFD700] text-gray-900 rounded-2xl hover:bg-[#FFC700] transition-all font-black shadow-md hover:shadow-lg"
                         >
                           Hire This Freelancer

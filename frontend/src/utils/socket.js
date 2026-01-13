@@ -16,9 +16,21 @@ const getAuthToken = () => {
 };
 
 /**
+ * Get the current socket instance (if connected)
+ */
+export const getSocket = () => {
+  return socket;
+};
+
+/**
  * Setup Socket.io connection with authentication
  */
 export const setupSocket = (dispatch) => {
+  // Return existing socket if already connected
+  if (socket && socket.connected) {
+    return socket;
+  }
+
   // Disconnect existing socket if any
   if (socket) {
     socket.disconnect();
@@ -73,7 +85,7 @@ export const setupSocket = (dispatch) => {
         message: data.message || `You have been hired for "${data.gigTitle}"!`
       }));
 
-      // Refresh active gigs list to show the new hire
+      // Refresh active gigs list to show the new hire (always refresh, even if not on the page)
       dispatch(fetchActiveGigs());
       
       // Refresh notifications
@@ -103,6 +115,22 @@ export const setupSocket = (dispatch) => {
         message: data.message || `New bid received for "${data.gigTitle}"`
       }));
     }
+  });
+
+  // Handle gig assigned notification for gig owners
+  socket.on('gigAssigned', (data) => {
+    console.log('📬 Received gigAssigned notification:', data);
+    
+    const state = store.getState();
+    const currentUserId = state.auth.user?.id || state.auth.user?._id;
+    
+    // Show notification
+    dispatch(setNotification({
+      type: 'success',
+      message: data.message || `You have hired ${data.freelancerName} for "${data.gigTitle}"`
+    }));
+    
+    // Note: The GigDetails component will handle refreshing the data via its own socket listener
   });
 
   socket.on('disconnect', (reason) => {

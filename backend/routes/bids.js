@@ -50,8 +50,8 @@ router.post('/', protect, [
     // Check if user has reached the maximum limit of 3 bids
     const userBidsCount = await Bid.countDocuments({ freelancerId: req.user._id });
     if (userBidsCount >= 3) {
-      return res.status(400).json({ 
-        message: 'You have reached the maximum limit of 3 bids. You cannot submit more bids.' 
+      return res.status(400).json({
+        message: 'You have reached the maximum limit of 3 bids. You cannot submit more bids.'
       });
     }
 
@@ -142,180 +142,231 @@ router.get('/:gigId', protect, async (req, res) => {
  * This ensures only ONE hire succeeds even if multiple admins click "Hire" simultaneously.
  */
 router.patch('/:bidId/hire', protect, async (req, res) => {
-  const session = await mongoose.startSession();
-  
-  try {
-    const { bidId } = req.params;
+  const { bidId } = req.params;
 
-    // Start transaction
-    session.startTransaction();
+  // Define the core hire logic to be reusable
+  const executeHireOperation = async (session) => {
+    // Helper for queries to attach session if waiting
+    const withSession = (query) => session ? query.session(session) : query;
 
-    // Step 1: Find the bid WITHIN transaction and lock it
-    const bid = await Bid.findById(bidId).session(session);
+    // Step 1: Find the bid
+    const bid = await withSession(Bid.findById(bidId));
     if (!bid) {
-      await session.abortTransaction();
-      return res.status(404).json({ message: 'Bid not found' });
+      return { error: true, status: 404, message: 'Bid not found' };
     }
 
-    // Step 2: Find the gig WITHIN transaction and lock it
-    const gig = await Gig.findById(bid.gigId).session(session);
+    // Step 2: Find the gig
+    const gig = await withSession(Gig.findById(bid.gigId));
     if (!gig) {
-      await session.abortTransaction();
-      return res.status(404).json({ message: 'Gig not found' });
+      return { error: true, status: 404, message: 'Gig not found' };
     }
 
     // Step 3: Verify ownership
     if (gig.ownerId.toString() !== req.user._id.toString()) {
-      await session.abortTransaction();
-      return res.status(403).json({ message: 'Only the gig owner can hire freelancers' });
+      return { error: true, status: 403, message: 'Only the gig owner can hire freelancers' };
     }
 
-    // Step 4: Check if freelancer already has 3 active gigs (within transaction)
-    const activeGigsCount = await Bid.countDocuments({
+    // Step 4: Check if freelancer already has 3 active gigs
+    const activeGigsCount = await withSession(Bid.countDocuments({
       freelancerId: bid.freelancerId,
       status: 'hired'
-    }).session(session);
+    }));
 
     if (activeGigsCount >= 3) {
-      await session.abortTransaction();
-      return res.status(400).json({ 
-        message: 'This freelancer already has 3 active gigs. They cannot be hired for more gigs simultaneously.' 
-      });
+      return {
+        error: true,
+        status: 400,
+        message: 'This freelancer already has 3 active gigs. They cannot be hired for more gigs simultaneously.'
+      };
     }
 
     // Step 5: ATOMIC OPERATION - Update gig status ONLY if still 'open'
-    // This is the critical atomic check that prevents race conditions
-    const updatedGig = await Gig.findOneAndUpdate(
+    const updatedGig = await withSession(Gig.findOneAndUpdate(
       {
         _id: gig._id,
-        status: 'open'  // Only update if status is still 'open'
+        status: 'open'
       },
-      { 
+      {
         status: 'assigned',
-        assignedAt: new Date()  // Track when it was assigned
+        assignedAt: new Date()
       },
-      { 
-        session,
-        new: true,  // Return updated document
-        runValidators: true
-      }
-    );
-
-    // If gig wasn't updated, it means another transaction already changed it
-    if (!updatedGig) {
-      await session.abortTransaction();
-      return res.status(409).json({ 
-        message: 'This gig has already been assigned to another freelancer. Please refresh the page.' 
-      });
-    }
-
-    // Step 6: ATOMIC OPERATION - Update bid status ONLY if still 'pending'
-    // This ensures we don't hire a bid that was already processed
-    const updatedBid = await Bid.findOneAndUpdate(
       {
-        _id: bidId,
-        status: 'pending',  // Only update if status is still 'pending'
-        gigId: gig._id      // Ensure bid belongs to this gig
-      },
-      { status: 'hired' },
-      {
-        session,
         new: true,
         runValidators: true
       }
-    );
+    ));
 
-    // If bid wasn't updated, it means another transaction already processed it
-    if (!updatedBid) {
-      await session.abortTransaction();
-      return res.status(409).json({ 
-        message: 'This bid has already been processed. Please refresh the page.' 
-      });
+    if (!updatedGig) {
+      return {
+        error: true,
+        status: 409,
+        message: 'This gig has already been assigned to another freelancer. Please refresh the page.'
+      };
     }
 
-    // Step 7: Reject all other pending bids for this gig (atomic operation)
-    const rejectResult = await Bid.updateMany(
+    // Step 6: ATOMIC OPERATION - Update bid status ONLY if still 'pending'
+    const updatedBid = await withSession(Bid.findOneAndUpdate(
+      {
+        _id: bidId,
+        status: 'pending',
+        gigId: gig._id
+      },
+      { status: 'hired' },
+      {
+        new: true,
+        runValidators: true
+      }
+    ));
+
+    if (!updatedBid) {
+      // Rollback gig update if we can't update bid (only matters if no transaction)
+      // If transaction exists, it will abort automatically.
+      // If no transaction, we manually try to revert gig status (best effort)
+      if (!session) {
+        await Gig.findByIdAndUpdate(gig._id, { status: 'open', $unset: { assignedAt: 1 } });
+      }
+      return {
+        error: true,
+        status: 409,
+        message: 'This bid has already been processed. Please refresh the page.'
+      };
+    }
+
+    // Step 7: Reject all other pending bids for this gig
+    const rejectResult = await withSession(Bid.updateMany(
       {
         gigId: gig._id,
         _id: { $ne: bidId },
-        status: 'pending'  // Only reject pending bids
+        status: 'pending'
       },
-      { 
+      {
         status: 'rejected',
         rejectedAt: new Date()
-      },
-      { 
-        session 
       }
-    );
+    ));
 
-    // Commit all changes atomically
+    return {
+      success: true,
+      data: {
+        bid: updatedBid,
+        gig: updatedGig,
+        rejectedCount: rejectResult.modifiedCount,
+        freelancerId: bid.freelancerId,
+        gigOwnerId: gig.ownerId,
+        gigTitle: gig.title
+      }
+    };
+  };
+
+  // Main execution flow
+  let session = null;
+  try {
+    // Try with transaction first
+    session = await mongoose.startSession();
+    session.startTransaction();
+
+    const result = await executeHireOperation(session);
+
+    if (result.error) {
+      await session.abortTransaction();
+      return res.status(result.status).json({ message: result.message });
+    }
+
     await session.commitTransaction();
 
-    // Step 8: After successful transaction, fetch populated data (outside transaction)
-    const populatedBid = await Bid.findById(bidId)
-      .populate('freelancerId', 'name email')
-      .populate('gigId', 'title');
+    // Continue nicely to notifications
+    finalizeHire(req, res, result.data);
 
-    // Step 9: Create notification (outside transaction for better performance)
-    try {
-      await Notification.create({
-        userId: bid.freelancerId,
-        type: 'hired',
-        message: `Congratulations! You have been hired for "${gig.title}"`,
-        gigId: gig._id,
-        bidId: bid._id
-      });
-    } catch (notifError) {
-      // Log error but don't fail the request
-      console.error('Failed to create notification:', notifError);
-    }
-
-    // Step 10: Emit real-time notification via Socket.io to specific freelancer
-    const io = req.app.get('io');
-    if (io) {
-      const freelancerId = bid.freelancerId.toString();
-      const freelancerRoom = `user:${freelancerId}`;
-      
-      // Emit to the specific freelancer's room with the exact message format requested
-      io.to(freelancerRoom).emit('bidHired', {
-        bidId: bid._id,
-        freelancerId: freelancerId,
-        gigId: gig._id.toString(),
-        gigTitle: gig.title,
-        message: `You have been hired for "${gig.title}"!`, // Exact format: "You have been hired for [Project Name]!"
-        timestamp: new Date().toISOString()
-      });
-      
-      console.log(`Notification sent to freelancer ${freelancerId} in room ${freelancerRoom}`);
-    }
-
-    res.json({
-      message: 'Freelancer hired successfully',
-      bid: populatedBid,
-      rejectedBidsCount: rejectResult.modifiedCount
-    });
   } catch (error) {
-    // Abort transaction on any error
-    if (session.inTransaction()) {
-      await session.abortTransaction();
+    if (session) await session.abortTransaction();
+
+    // Check for standalone MongoDB error (Transaction specific)
+    const isTransactionError = error.code === 20 ||
+      error.codeName === 'IllegalOperation' ||
+      (error.message && error.message.includes('Transaction numbers are only allowed on a replica set member'));
+
+    if (isTransactionError) {
+      console.warn('⚠️ MongoDB Transaction failed (Standalone Mode). Falling back to non-transactional update.');
+
+      try {
+        // Retry without session
+        const result = await executeHireOperation(null);
+
+        if (result.error) {
+          return res.status(result.status).json({ message: result.message });
+        }
+
+        finalizeHire(req, res, result.data);
+      } catch (retryError) {
+        console.error('Fallback hire error:', retryError);
+        return res.status(500).json({ message: retryError.message });
+      }
+    } else {
+      console.error('Hire error:', error);
+      // Handle write conflict specially
+      if (error.name === 'WriteConflict') {
+        return res.status(409).json({
+          message: 'A conflict occurred. Another user may have hired a freelancer for this gig. Please refresh and try again.'
+        });
+      }
+      return res.status(500).json({ message: error.message });
     }
-    
-    // Handle specific MongoDB errors
-    if (error.name === 'WriteConflict') {
-      return res.status(409).json({ 
-        message: 'A conflict occurred. Another user may have hired a freelancer for this gig. Please refresh and try again.' 
-      });
-    }
-    
-    console.error('Hire error:', error);
-    res.status(500).json({ 
-      message: error.message || 'An error occurred while hiring the freelancer' 
-    });
   } finally {
-    // Always end the session
-    await session.endSession();
+    if (session) session.endSession();
   }
 });
+
+// Helper to handle post-hire notifications (Socket & DB)
+async function finalizeHire(req, res, data) {
+  const { bid, gig, rejectedCount, freelancerId, gigOwnerId, gigTitle } = data;
+
+  // Fetch populated bid for response
+  const populatedBid = await Bid.findById(bid._id)
+    .populate('freelancerId', 'name email')
+    .populate('gigId', 'title');
+
+  // Create notification
+  try {
+    await Notification.create({
+      userId: freelancerId,
+      type: 'hired',
+      message: `Congratulations! You have been hired for "${gigTitle}"`,
+      gigId: gig._id,
+      bidId: bid._id
+    });
+  } catch (notifError) {
+    console.error('Failed to create notification:', notifError);
+  }
+
+  // Socket.io updates
+  const io = req.app.get('io');
+  if (io) {
+    const fId = freelancerId.toString();
+    const freelancerRoom = `user:${fId}`;
+    const ownerRoom = `user:${gigOwnerId.toString()}`;
+
+    io.to(freelancerRoom).emit('bidHired', {
+      bidId: bid._id,
+      freelancerId: fId,
+      gigId: gig._id.toString(),
+      gigTitle: gigTitle,
+      message: `You have been hired for "${gigTitle}"!`,
+      timestamp: new Date().toISOString()
+    });
+
+    io.to(ownerRoom).emit('gigAssigned', {
+      gigId: gig._id.toString(),
+      gigTitle: gigTitle,
+      freelancerName: populatedBid.freelancerId.name,
+      message: `You have hired ${populatedBid.freelancerId.name} for "${gigTitle}"`
+    });
+  }
+
+  res.json({
+    message: 'Freelancer hired successfully',
+    bid: populatedBid,
+    rejectedBidsCount: rejectedCount
+  });
+}
 
 export default router;

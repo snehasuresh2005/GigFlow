@@ -44,8 +44,8 @@ router.post('/', protect, [
     // Check if user has reached the maximum limit of 3 gigs
     const userGigsCount = await Gig.countDocuments({ ownerId: req.user._id });
     if (userGigsCount >= 3) {
-      return res.status(400).json({ 
-        message: 'You have reached the maximum limit of 3 gigs. Please delete an existing gig before creating a new one.' 
+      return res.status(400).json({
+        message: 'You have reached the maximum limit of 3 gigs. Please delete an existing gig before creating a new one.'
       });
     }
 
@@ -72,7 +72,7 @@ router.get('/my-gigs', protect, async (req, res) => {
     const gigs = await Gig.find({ ownerId: req.user._id })
       .populate('ownerId', 'name email')
       .sort({ createdAt: -1 });
-    
+
     res.json(gigs);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -86,7 +86,13 @@ router.get('/my-active-gigs', protect, async (req, res) => {
     const userBids = await Bid.find({
       freelancerId: req.user._id
     })
-      .populate('gigId')
+      .populate({
+        path: 'gigId',
+        populate: {
+          path: 'ownerId',
+          select: 'name email'
+        }
+      })
       .populate('freelancerId', 'name email')
       .sort({ createdAt: -1 });
 
