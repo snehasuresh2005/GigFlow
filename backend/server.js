@@ -17,16 +17,24 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-/* ------------------ CORS CONFIG ------------------ */
+/* ------------------ CORS CONFIG (THE FIX) ------------------ */
+// ⚠️ IMPORTANT: Add your EXACT Vercel domain below.
+// Do not include a trailing slash (e.g., use "https://app.vercel.app", NOT "https://app.vercel.app/")
 const allowedOrigins = [
-  process.env.CLIENT_URL,          // Vercel frontend
-  "http://localhost:5173"           // Local dev
+  process.env.CLIENT_URL,                      // Reads from Render Env Vars (if set)
+  "http://localhost:5173",                     // Local development
+  "https://gig-flow-rho.vercel.app",           // Example Vercel URL (Replace if yours is different)
+  "https://gig-flow-frontend.vercel.app"       // Add any other domains you use here
 ].filter(Boolean);
+
+console.log("Allowed CORS Origins:", allowedOrigins); // Debug log to check on Render
 
 app.use(
   cors({
     origin: allowedOrigins,
-    credentials: true
+    credentials: true, // Required for cookies/JWT
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 
@@ -37,7 +45,7 @@ app.use(cookieParser());
 /* ------------------ SOCKET.IO ------------------ */
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: allowedOrigins, // Re-use the same origins for WebSockets
     credentials: true
   }
 });
