@@ -38,12 +38,14 @@ router.post('/', protect, [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('Validation errors when creating gig:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
     // Check if user has reached the maximum limit of 3 gigs
     const userGigsCount = await Gig.countDocuments({ ownerId: req.user._id });
     if (userGigsCount >= 3) {
+      console.error('User has reached the maximum gig limit:', req.user._id);
       return res.status(400).json({
         message: 'You have reached the maximum limit of 3 gigs. Please delete an existing gig before creating a new one.'
       });
@@ -62,6 +64,7 @@ router.post('/', protect, [
 
     res.status(201).json(populatedGig);
   } catch (error) {
+    console.error('Error creating gig:', error);
     res.status(500).json({ message: error.message });
   }
 });

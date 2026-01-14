@@ -1,12 +1,12 @@
 import axios from "axios";
 
-// TEMPORARY FIX: Hardcode the URL to bypass the environment variable issue
-const baseURL = "https://gigflow-backend-4mnl.onrender.com/api";
+// Export the base URL so it can be used by other utilities (like socket.js)
+export const baseURL = "https://gigflow-backend-4mnl.onrender.com";
 
 console.log("Using Hardcoded URL:", baseURL);
 
 const api = axios.create({
-  baseURL: baseURL,
+  baseURL: `${baseURL}/api`,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json"

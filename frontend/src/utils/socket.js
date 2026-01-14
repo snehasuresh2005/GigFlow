@@ -3,6 +3,7 @@ import { setNotification, addNewBid } from '../store/slices/bidSlice';
 import { fetchActiveGigs } from '../store/slices/gigSlice';
 import { fetchNotifications } from '../store/slices/authSlice';
 import { store } from '../store/store';
+import { baseURL } from './api';
 
 let socket = null;
 
@@ -43,7 +44,7 @@ export const setupSocket = (dispatch) => {
   }
 
   // Connect to Socket.io server with authentication
-  socket = io('http://localhost:5000', {
+  socket = io(baseURL, {
     withCredentials: true,
     auth: {
       token: token
@@ -57,7 +58,7 @@ export const setupSocket = (dispatch) => {
   socket.on('connect', () => {
     console.log('✅ Connected to Socket.io server');
     console.log('Socket ID:', socket.id);
-    
+
     // User automatically joins their room on backend after authentication
     // No need to manually join here
   });
@@ -72,11 +73,11 @@ export const setupSocket = (dispatch) => {
   // Handle real-time notification when freelancer is hired
   socket.on('bidHired', (data) => {
     console.log('📬 Received bidHired notification:', data);
-    
+
     // Get current user from store
     const state = store.getState();
     const currentUserId = state.auth.user?.id || state.auth.user?._id;
-    
+
     // Verify this notification is for the current user
     if (currentUserId && String(data.freelancerId) === String(currentUserId)) {
       // Show notification toast
@@ -87,10 +88,10 @@ export const setupSocket = (dispatch) => {
 
       // Refresh active gigs list to show the new hire (always refresh, even if not on the page)
       dispatch(fetchActiveGigs());
-      
+
       // Refresh notifications
       dispatch(fetchNotifications());
-      
+
       console.log(`✅ Notification displayed for user ${currentUserId}`);
     } else {
       console.log(`⚠️ Notification ignored - not for current user (${currentUserId})`);
@@ -100,15 +101,15 @@ export const setupSocket = (dispatch) => {
   // Handle new bid notifications for gig owners
   socket.on('newBid', (data) => {
     console.log('📬 Received newBid notification:', data);
-    
+
     const state = store.getState();
     const currentUserId = state.auth.user?.id || state.auth.user?._id;
-    
+
     // Only show notification if user is the gig owner
     if (currentUserId && String(data.ownerId) === String(currentUserId)) {
       // Add the new bid to the bids list
       dispatch(addNewBid(data.bid));
-      
+
       // Show notification
       dispatch(setNotification({
         type: 'info',
@@ -120,16 +121,16 @@ export const setupSocket = (dispatch) => {
   // Handle gig assigned notification for gig owners
   socket.on('gigAssigned', (data) => {
     console.log('📬 Received gigAssigned notification:', data);
-    
+
     const state = store.getState();
     const currentUserId = state.auth.user?.id || state.auth.user?._id;
-    
+
     // Show notification
     dispatch(setNotification({
       type: 'success',
       message: data.message || `You have hired ${data.freelancerName} for "${data.gigTitle}"`
     }));
-    
+
     // Note: The GigDetails component will handle refreshing the data via its own socket listener
   });
 

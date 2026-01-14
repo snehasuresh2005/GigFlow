@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import api from '../../utils/api';
 
-const API_URL = '/api/gigs';
+const API_URL = '/gigs';
 
 // Fetch all gigs
 export const fetchGigs = createAsyncThunk(
@@ -9,9 +9,10 @@ export const fetchGigs = createAsyncThunk(
   async (searchQuery = '', { rejectWithValue }) => {
     try {
       const url = searchQuery ? `${API_URL}?search=${encodeURIComponent(searchQuery)}` : API_URL;
-      const response = await axios.get(url);
+      const response = await api.get(url);
       return response.data;
     } catch (error) {
+      console.error('Fetch Gigs Error:', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch gigs');
     }
   }
@@ -22,11 +23,13 @@ export const createGig = createAsyncThunk(
   'gigs/createGig',
   async (gigData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(API_URL, gigData, {
-        withCredentials: true
-      });
+      const response = await api.post(API_URL, gigData);
       return response.data;
     } catch (error) {
+      // Handle express-validator errors (array of objects with msg property)
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        return rejectWithValue(error.response.data.errors.map(err => err.msg).join(', '));
+      }
       return rejectWithValue(error.response?.data?.message || 'Failed to create gig');
     }
   }
@@ -37,7 +40,7 @@ export const fetchGig = createAsyncThunk(
   'gigs/fetchGig',
   async (gigId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/${gigId}`);
+      const response = await api.get(`${API_URL}/${gigId}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch gig');
@@ -50,9 +53,7 @@ export const fetchMyGigs = createAsyncThunk(
   'gigs/fetchMyGigs',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/my-gigs`, {
-        withCredentials: true
-      });
+      const response = await api.get(`${API_URL}/my-gigs`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch your gigs');
@@ -65,9 +66,7 @@ export const fetchActiveGigs = createAsyncThunk(
   'gigs/fetchActiveGigs',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/my-active-gigs`, {
-        withCredentials: true
-      });
+      const response = await api.get(`${API_URL}/my-active-gigs`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch your active gigs');
