@@ -26,7 +26,7 @@ const corsOptions = {
 
     // Check if the origin is localhost OR ends with .vercel.app
     if (
-      origin.startsWith("http://localhost") || 
+      origin.startsWith("http://localhost") ||
       origin.includes(".vercel.app")
     ) {
       callback(null, true);
@@ -36,7 +36,7 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"]
 };
 
