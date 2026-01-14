@@ -106,8 +106,22 @@ const bidSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(hireFreelancer.fulfilled, (state) => {
+      .addCase(hireFreelancer.fulfilled, (state, action) => {
         state.loading = false;
+        const hiredBid = action.payload.bid;
+
+        // Update the status of the hired bid
+        const index = state.bids.findIndex(b => b._id === hiredBid._id);
+        if (index !== -1) {
+          state.bids[index] = hiredBid;
+        }
+
+        // Mark all other bids as rejected
+        state.bids.forEach(bid => {
+          if (bid._id !== hiredBid._id && bid.status === 'pending') {
+            bid.status = 'rejected';
+          }
+        });
       })
       .addCase(hireFreelancer.rejected, (state, action) => {
         state.loading = false;
