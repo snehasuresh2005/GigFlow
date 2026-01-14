@@ -20,9 +20,9 @@ const Home = () => {
   return (
     <div>
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-[#8A2BE2] to-[#9C4EDD] rounded-3xl p-12 mb-12 text-white shadow-2xl">
+      <div className="bg-gradient-to-br from-[#8A2BE2] to-[#9C4EDD] rounded-3xl p-6 md:p-12 mb-12 text-white shadow-2xl">
         <div className="max-w-3xl">
-          <h1 className="text-5xl font-black mb-4 uppercase tracking-tight">
+          <h1 className="text-3xl md:text-5xl font-black mb-4 uppercase tracking-tight">
             Connect With World's Best{' '}
             <span className="inline-flex items-center">
               Freelancers
@@ -34,8 +34,8 @@ const Home = () => {
           <p className="text-xl text-purple-100 mb-8 font-medium">
             Find your next freelance opportunity or post a project and get bids from talented professionals
           </p>
-          
-          <form onSubmit={handleSearch} className="flex gap-3">
+
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
             <input
               type="text"
               placeholder="Search gigs by title or description..."
