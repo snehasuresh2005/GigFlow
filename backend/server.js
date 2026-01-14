@@ -17,28 +17,30 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-/* ------------------ CORS CONFIG (UPDATED) ------------------ */
-const allowedOrigins = [
-  process.env.CLIENT_URL,                      // Reads from Render Env Vars
-  "http://localhost:5173",                     // Local development
-  "https://gig-flow-rho.vercel.app",           // Your main Vercel domain
-  "https://gig-flow-frontend.vercel.app",      // Your alternate Vercel domain
-  
-  // 👇 THIS IS THE CRITICAL FIX 👇
-  // This matches the URL in your screenshot exactly
-  "https://snehasuresh358-gmailcoms-projects.vercel.app" 
-].filter(Boolean);
+/* ------------------ CORS CONFIG (FOREVER FIX) ------------------ */
+// This function allows ANY Vercel URL and localhost
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or Postman)
+    if (!origin) return callback(null, true);
 
-console.log("Allowed CORS Origins:", allowedOrigins);
+    // Check if the origin is localhost OR ends with .vercel.app
+    if (
+      origin.startsWith("http://localhost") || 
+      origin.includes(".vercel.app")
+    ) {
+      callback(null, true);
+    } else {
+      console.log("Blocked by CORS:", origin); // Debug log
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
 
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true, // Required for cookies/JWT
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
+app.use(cors(corsOptions));
 
 /* ------------------ MIDDLEWARE ------------------ */
 app.use(express.json());
@@ -46,10 +48,7 @@ app.use(cookieParser());
 
 /* ------------------ SOCKET.IO ------------------ */
 const io = new Server(httpServer, {
-  cors: {
-    origin: allowedOrigins, // Re-use the same origins for WebSockets
-    credentials: true
-  }
+  cors: corsOptions // Apply the same smart rule to WebSockets
 });
 
 // Socket authentication
