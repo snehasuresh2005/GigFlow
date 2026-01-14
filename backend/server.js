@@ -17,17 +17,19 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-/* ------------------ CORS CONFIG (THE FIX) ------------------ */
-// ⚠️ IMPORTANT: Add your EXACT Vercel domain below.
-// Do not include a trailing slash (e.g., use "https://app.vercel.app", NOT "https://app.vercel.app/")
+/* ------------------ CORS CONFIG (UPDATED) ------------------ */
 const allowedOrigins = [
-  process.env.CLIENT_URL,                      // Reads from Render Env Vars (if set)
+  process.env.CLIENT_URL,                      // Reads from Render Env Vars
   "http://localhost:5173",                     // Local development
-  "https://gig-flow-rho.vercel.app",           // Example Vercel URL (Replace if yours is different)
-  "https://gig-flow-frontend.vercel.app"       // Add any other domains you use here
+  "https://gig-flow-rho.vercel.app",           // Your main Vercel domain
+  "https://gig-flow-frontend.vercel.app",      // Your alternate Vercel domain
+  
+  // 👇 THIS IS THE CRITICAL FIX 👇
+  // This matches the URL in your screenshot exactly
+  "https://snehasuresh358-gmailcoms-projects.vercel.app" 
 ].filter(Boolean);
 
-console.log("Allowed CORS Origins:", allowedOrigins); // Debug log to check on Render
+console.log("Allowed CORS Origins:", allowedOrigins);
 
 app.use(
   cors({
