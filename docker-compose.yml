@@ -1,0 +1,39 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: smart-leads-mongo
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smart-leads-backend
+    ports:
+      - '5000:5000'
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/smart-leads
+      JWT_SECRET: docker_dev_jwt_secret_change_in_production
+      PORT: 5000
+      CLIENT_URL: http://localhost:5173
+      NODE_ENV: development
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smart-leads-frontend
+    ports:
+      - '5173:5173'
+    environment:
+      VITE_API_URL: http://localhost:5000
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

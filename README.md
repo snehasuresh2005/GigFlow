@@ -1,209 +1,165 @@
-# GigFlow - Mini Freelance Marketplace Platform
+# Smart Leads Dashboard
 
-A full-stack freelance marketplace where Clients can post jobs (Gigs) and Freelancers can apply for them (Bids). Built with React, Node.js, Express, MongoDB, and Socket.io for real-time updates.
+A full-stack Lead Management Dashboard built with the MERN stack, TypeScript, Tailwind CSS, JWT authentication, role-based access control, advanced filtering, pagination, debounced search, and CSV export.
 
 ## Features
 
-- **User Authentication**: Secure sign-up and login with JWT tokens stored in HttpOnly cookies
-- **Gig Management**: Browse, search, and create freelance job postings
-- **Bidding System**: Freelancers can submit bids with messages and prices
-- **Hiring Logic**: Atomic transaction-based hiring system that prevents race conditions
-- **Real-time Notifications**: Socket.io integration for instant notifications when hired
-- **Minimalistic UI**: Clean and modern design with Tailwind CSS
+- **JWT Authentication** — Register, login, protected routes, bcrypt password hashing
+- **Leads CRUD** — Create, read, update, delete leads with status and source tracking
+- **Advanced Filtering** — Filter by status, source, search by name/email, sort latest/oldest (combinable)
+- **Backend Pagination** — 10 records per page with metadata
+- **Debounced Search** — 400ms debounce on the frontend
+- **CSV Export** — Export filtered leads as CSV
+- **RBAC** — Admin (full access including delete) and Sales User roles
+- **Docker Setup** — `docker-compose` for MongoDB, backend, and frontend
+- **Dark Mode** — Toggle with persisted preference (bonus)
 
 ## Tech Stack
 
-### Frontend
-- React.js (Vite)
-- Tailwind CSS
-- Redux Toolkit
-- React Router
-- Socket.io Client
-- Axios
-
-### Backend
-- Node.js
-- Express.js
-- MongoDB (Mongoose)
-- JWT Authentication
-- Socket.io
-- Bcrypt for password hashing
+| Layer    | Technologies                          |
+|----------|---------------------------------------|
+| Frontend | React, TypeScript, Tailwind, Redux    |
+| Backend  | Node.js, Express, TypeScript, Mongoose|
+| Database | MongoDB                               |
 
 ## Project Structure
 
 ```
-gigflow/
+smart-leads-dashboard/
 ├── backend/
-│   ├── models/
-│   │   ├── User.js
-│   │   ├── Gig.js
-│   │   └── Bid.js
-│   ├── routes/
-│   │   ├── auth.js
-│   │   ├── gigs.js
-│   │   └── bids.js
-│   ├── middleware/
-│   │   └── auth.js
-│   ├── server.js
-│   ├── package.json
-│   └── .env.example
+│   └── src/
+│       ├── models/       # User, Lead
+│       ├── routes/       # auth, leads
+│       ├── middleware/   # auth, rbac, errors
+│       ├── types/
+│       └── utils/
 ├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── store/
-│   │   ├── utils/
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── package.json
-│   └── vite.config.js
+│   └── src/
+│       ├── components/   # UI + leads components
+│       ├── pages/
+│       ├── store/        # Redux slices
+│       ├── hooks/
+│       └── types/
+├── docker-compose.yml
+├── API.md
 └── README.md
 ```
 
 ## Setup Instructions
 
 ### Prerequisites
-- Node.js (v16 or higher)
-- MongoDB (local or MongoDB Atlas)
-- npm or yarn
 
-### Installation
+- Node.js 18+
+- MongoDB (local or Atlas)
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd gigflow
-   ```
+### 1. Install dependencies
 
-2. **Install dependencies**
-   ```bash
-   npm run install-all
-   ```
+```bash
+npm run install-all
+```
 
-3. **Backend Setup**
-   ```bash
-   cd backend
-   cp .env.example .env
-   ```
-   
-   Edit `.env` and set:
-   - `MONGODB_URI`: Your MongoDB connection string
-   - `JWT_SECRET`: A secure random string for JWT signing
-   - `PORT`: Backend server port (default: 5000)
-   - `CLIENT_URL`: Frontend URL (default: http://localhost:5173)
+### 2. Backend environment
 
-4. **Frontend Setup**
-   ```bash
-   cd frontend
-   ```
-   No additional configuration needed. The frontend is configured to proxy API requests to the backend.
+```bash
+cd backend
+cp .env.example .env
+```
 
-5. **Start MongoDB**
-   Make sure MongoDB is running on your system or use MongoDB Atlas.
+Edit `.env`:
 
-6. **Run the application**
-   
-   From the root directory:
-   ```bash
-   npm run dev
-   ```
-   
-   Or run separately:
-   ```bash
-   # Terminal 1 - Backend
-   npm run server
-   
-   # Terminal 2 - Frontend
-   npm run client
-   ```
+```
+MONGODB_URI=mongodb://localhost:27017/smart-leads
+JWT_SECRET=your_super_secret_jwt_key
+PORT=5000
+CLIENT_URL=http://localhost:5173
+NODE_ENV=development
+```
 
-7. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:5000
+### 3. Frontend environment (optional)
 
-## API Endpoints
+```bash
+cd frontend
+cp .env.example .env
+```
 
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/logout` - Logout user
-- `GET /api/auth/me` - Get current user
+For local dev, leave `VITE_API_URL` empty to use the Vite proxy, or set:
 
-### Gigs
-- `GET /api/gigs` - Get all open gigs (supports `?search=query` parameter)
-- `POST /api/gigs` - Create a new gig (requires authentication)
-- `GET /api/gigs/:id` - Get single gig details
+```
+VITE_API_URL=http://localhost:5000
+```
 
-### Bids
-- `POST /api/bids` - Submit a bid (requires authentication)
-- `GET /api/bids/:gigId` - Get all bids for a gig (owner only)
-- `PATCH /api/bids/:bidId/hire` - Hire a freelancer (owner only, atomic transaction)
+### 4. Seed sample data
 
-## Database Schema
+```bash
+npm run seed
+```
 
-### User
-- `name`: String (required)
-- `email`: String (required, unique)
-- `password`: String (required, hashed)
+**Demo accounts:**
 
-### Gig
-- `title`: String (required)
-- `description`: String (required)
-- `budget`: Number (required)
-- `ownerId`: ObjectId (ref: User)
-- `status`: String (enum: 'open', 'assigned')
+| Role  | Email                 | Password  |
+|-------|-----------------------|-----------|
+| Admin | admin@smartleads.com  | admin123  |
+| Sales | sales@smartleads.com  | sales123  |
 
-### Bid
-- `gigId`: ObjectId (ref: Gig)
-- `freelancerId`: ObjectId (ref: User)
-- `message`: String (required)
-- `price`: Number (required)
-- `status`: String (enum: 'pending', 'hired', 'rejected')
+### 5. Run locally
 
-## Bonus Features Implemented
+From the project root:
 
-### ✅ Bonus 1: Transactional Integrity
-The hiring logic uses MongoDB transactions to ensure atomic updates. When a client hires a freelancer:
-- The gig status is updated to 'assigned'
-- The selected bid is marked as 'hired'
-- All other pending bids are marked as 'rejected'
-- All operations happen atomically, preventing race conditions
+```bash
+npm run dev
+```
 
-### ✅ Bonus 2: Real-time Updates
-Socket.io is integrated to send real-time notifications. When a freelancer is hired, they receive an instant notification without page refresh.
+- Frontend: http://localhost:5173
+- Backend: http://localhost:5000
 
-## Security Features
+### Docker
 
-- Password hashing with bcrypt
-- JWT tokens stored in HttpOnly cookies
-- Input validation with express-validator
-- CORS configuration
-- Protected routes with authentication middleware
+```bash
+npm run docker:up
+```
+
+Stop containers:
+
+```bash
+npm run docker:down
+```
+
+## API Documentation
+
+See [API.md](./API.md) for full endpoint reference.
 
 ## Environment Variables
 
-### Backend (.env)
-```
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/gigflow
-JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
-NODE_ENV=development
-CLIENT_URL=http://localhost:5173
-```
+### Backend (`backend/.env`)
 
-## Development Notes
+| Variable     | Description                    |
+|--------------|--------------------------------|
+| MONGODB_URI  | MongoDB connection string      |
+| JWT_SECRET   | Secret for signing JWT tokens  |
+| PORT         | Server port (default 5000)     |
+| CLIENT_URL   | Allowed CORS origin(s)         |
+| NODE_ENV     | `development` or `production`  |
 
-- The application uses ES6 modules
-- Redux Toolkit is used for state management
-- Socket.io is configured for real-time communication
-- All API requests include credentials for cookie-based authentication
+### Frontend (`frontend/.env`)
 
-## Submission
+| Variable      | Description                          |
+|---------------|--------------------------------------|
+| VITE_API_URL  | Backend URL (optional in dev)        |
 
-- **GitHub Repository**: [Your repository link]
-- **Hosted Link**: [Your hosted application link]
-- **Demo Video**: [Loom video link]
+## Submission Checklist
+
+- [x] TypeScript (frontend + backend)
+- [x] JWT auth with protected routes
+- [x] Leads CRUD
+- [x] Combined filters + search + sort
+- [x] Backend pagination (10/page)
+- [x] Debounced search
+- [x] CSV export
+- [x] RBAC (admin / sales)
+- [x] Docker setup
+- [x] README, `.env.example`, API docs
+- [x] Dark mode (bonus)
 
 ## Author
 
-Built as part of Full Stack Development Internship Assignment
+Full Stack Internship Assignment — Smart Leads Dashboard
