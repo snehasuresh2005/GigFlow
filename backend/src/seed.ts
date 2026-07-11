@@ -37,16 +37,27 @@ const seed = async (): Promise<void> => {
     { name: 'Arjun Das', email: 'arjun@example.com', status: 'New' as const, source: 'Referral' as const },
     { name: 'Meera Joshi', email: 'meera@example.com', status: 'Contacted' as const, source: 'Website' as const },
     { name: 'Rahul Verma', email: 'rahul.verma@example.com', status: 'New' as const, source: 'Instagram' as const },
-    { name: 'Deepak Rao', email: 'deepak@example.com', status: 'Lost' as const, source: 'Referral' as const }
+    { name: 'Deepak Rao', email: 'deepak@example.com', status: 'Lost' as const, source: 'Referral' as const },
+    { name: 'Nisha Gupta', email: 'nisha@example.com', status: 'Qualified' as const, source: 'Website' as const },
+    { name: 'Karan Joshi', email: 'karan@example.com', status: 'New' as const, source: 'Instagram' as const },
+    { name: 'Maya Desai', email: 'maya@example.com', status: 'Contacted' as const, source: 'Referral' as const },
+    { name: 'Sameer Khan', email: 'sameer@example.com', status: 'Qualified' as const, source: 'Website' as const },
+    { name: 'Isha Patel', email: 'isha@example.com', status: 'New' as const, source: 'Referral' as const },
+    { name: 'Naveen Bhat', email: 'naveen@example.com', status: 'Contacted' as const, source: 'Instagram' as const },
+    { name: 'Tara Mukherjee', email: 'tara@example.com', status: 'Lost' as const, source: 'Website' as const },
+    { name: 'Devansh Shah', email: 'devansh@example.com', status: 'Qualified' as const, source: 'Referral' as const },
+    { name: 'Anjali Rao', email: 'anjali@example.com', status: 'New' as const, source: 'Website' as const },
+    { name: 'Kunal Malhotra', email: 'kunal@example.com', status: 'Contacted' as const, source: 'Instagram' as const },
+    { name: 'Megha Kapoor', email: 'megha@example.com', status: 'Qualified' as const, source: 'Referral' as const }
   ];
 
   for (const lead of sampleLeads) {
     await Lead.create({ ...lead, createdBy: Math.random() > 0.5 ? admin._id : sales._id });
   }
 
-  console.log('Seed completed');
-  console.log('Admin: admin@gigflow.com (any password)');
-  console.log('Sales: sales@gigflow.com (any password)');
+  console.log('Seed completed with sample gigs');
+  console.log('Admin: admin@gigflow.com (password admin123)');
+  console.log('Sales: sales@gigflow.com (password sales123)');
 
   await mongoose.disconnect();
 };
